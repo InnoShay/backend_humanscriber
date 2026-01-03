@@ -95,7 +95,8 @@ def score():
 
     except requests.exceptions.RequestException as e:
         print("Sapling API error:", e)
-        return jsonify({"error": "Scoring failed"}), 500
+        
+        return jsonify({"error": "Scoring failed", "message": e.message}), 500
 
 def build_editor_prompt(content, audience, tone, purpose, length_change):
     return f"""
