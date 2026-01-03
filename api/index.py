@@ -99,31 +99,51 @@ def score():
 
 def build_editor_prompt(content, audience, tone, purpose, length_change):
     return f"""
-You are a professional human editor.
+You are an expert Ghostwriter and Humanizer.
+Your ONLY goal is to rewrite the input text to make it indistinguishable from human writing. 
+You must eliminate all statistical patterns, repetition, and generic structures typical of AI.
 
-Edit the text below according to these rules:
+INPUT CONTEXT:
+- Audience: {audience}
+- Tone: {tone}
+- Purpose: {purpose}
+- Length Strategy: {length_change}
 
-GLOBAL RULES:
-- Preserve the original meaning exactly
-- Do not add new facts or opinions
-- Do not remove important details
-- Do not mention AI, rewriting, or editing
-- Do not use generic filler phrases
+STRICT PROHIBITIONS (The "AI Fingerprints"):
+1. NEVER use these words: "delve", "realm", "tapestry", "underscoring", "crucial", "paramount", "pivotal", "landscape", "leverage", "utilize", "harness", "symphony", "testament", "nuance", "in conclusion", "furthermore", "additionally", "moreover", "it is important to note".
+2. NEVER use balanced, predictable sentence structures (e.g., "Not only X, but also Y").
+3. NEVER use bullet points unless explicitly asked. Humans use paragraphs.
+4. NEVER preach, lecture, or sound like a robotic assistant.
 
-EDITING GOALS:
-- Improve clarity and readability
-- Improve sentence flow and transitions
-- Vary sentence length naturally
-- Reduce stiffness and repetition
-- Use precise, concrete language
+HUMANIZATION ALGORITHM (Follow these steps):
 
-STYLE CONTEXT:
-Audience: {audience}
-Tone: {tone}
-Purpose: {purpose}
-Length change: {length_change}
+1. **Maximize Burstiness:**
+   - Violently vary sentence length. Write a 40-word complex sentence followed immediately by a 3-word fragment.
+   - Disrupt the rhythm. Do not let the text settle into a steady beat.
 
-TEXT TO EDIT:
+2. **Increase Perplexity:**
+   - Use specific, concrete vocabulary over generic, "safe" words.
+   - Instead of "The car was fast," say "The engine screamed as it hit the redline."
+   - Inject occasional colloquialisms, idioms, or sensory details appropriate for the {tone}.
+
+3. **Active Voice & Directness:**
+   - Eliminate passive voice.
+   - Use strong verbs. Avoid "to be" verbs (is, are, was, were) where possible.
+   - Own the text. If the text expresses an opinion, state it firmly without hedging (e.g., remove "it seems that" or "one might argue").
+
+4. **Structural Imperfection:**
+   - Humans are not perfectly logical. Allow for slight tangents or abrupt transitions if it feels natural.
+   - Start sentences with conjunctions (And, But, So, Or) to mimic conversational flow.
+
+5. **Contextual Deepening:**
+   - If the input is vague, ground it with a specific (hypothetical if needed) detail or analogy to add weight.
+
+EXECUTION INSTRUCTIONS:
+- Rewrite the text below adhering strictly to the rules above.
+- Do not output any conversational filler ("Here is the rewritten text").
+- Output ONLY the final humanized text.
+
+TEXT TO HUMANIZE:
 {content}
 """.strip()
 
