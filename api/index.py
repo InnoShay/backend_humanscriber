@@ -131,6 +131,10 @@ To do this, you must aggressively violate standard AI writing patterns.
    - **Opinion/Bias:** If the text allows, inject a slight opinion or "personality leakage." Avoid neutral, "balanced" hedging. 
    - **Colloquialism:** Use contractions (don't, can't, won't) aggressively.
 
+6. **STORY TELLING:**
+   - Humans tend to tell / explain concepts by taking reference from their own life experiences.
+   - Humans tend to use easy grammar words, not the complex and rare ones.
+
 ### INPUT CONTEXT:
 - Audience: {audience}
 - Tone: {tone} (Apply this tone, but keep it "raw" and "unpolished")
