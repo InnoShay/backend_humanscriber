@@ -76,7 +76,7 @@ def score():
                 "key": os.getenv("SAPLING_API_KEY"),
                 "text": text
             },
-            timeout=10
+            timeout=50
         )
 
         response.raise_for_status()
