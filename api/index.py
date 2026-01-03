@@ -96,3 +96,91 @@ def score():
     except requests.exceptions.RequestException as e:
         print("Sapling API error:", e)
         return jsonify({"error": "Scoring failed"}), 500
+
+def build_editor_prompt(content, audience, tone, purpose, length_change):
+    return f"""
+You are a professional human editor.
+
+Edit the text below according to these rules:
+
+GLOBAL RULES:
+- Preserve the original meaning exactly
+- Do not add new facts or opinions
+- Do not remove important details
+- Do not mention AI, rewriting, or editing
+- Do not use generic filler phrases
+
+EDITING GOALS:
+- Improve clarity and readability
+- Improve sentence flow and transitions
+- Vary sentence length naturally
+- Reduce stiffness and repetition
+- Use precise, concrete language
+
+STYLE CONTEXT:
+Audience: {audience}
+Tone: {tone}
+Purpose: {purpose}
+Length change: {length_change}
+
+TEXT TO EDIT:
+{content}
+""".strip()
+
+@app.route("/humanize", methods=["POST"])
+def humanize():
+    data = request.get_json(silent=True)
+
+    if not data or "content" not in data:
+        return jsonify({"error": "Missing 'content'"}), 400
+
+    content = data["content"]
+
+    audience = data.get("audience", "general")
+    tone = data.get("tone", "neutral")
+    purpose = data.get("purpose", "explain")
+    length_change = data.get("constraints", {}).get("length_change", "minimal")
+
+    ai_model_key = data.get("ai_model", "flash")
+
+    MODEL_REGISTRY = {
+        "flash": "models/gemini-2.5-flash",
+        "pro": "models/gemini-3-pro-preview"
+    }
+
+    if ai_model_key not in MODEL_REGISTRY:
+        return jsonify({
+            "error": "Invalid 'ai_model'",
+            "allowed_values": list(MODEL_REGISTRY.keys())
+        }), 400
+
+    try:
+        prompt = build_editor_prompt(
+            content=content,
+            audience=audience,
+            tone=tone,
+            purpose=purpose,
+            length_change=length_change
+        )
+
+        model = genai.GenerativeModel(MODEL_REGISTRY[ai_model_key])
+        result = model.generate_content(prompt)
+
+        return jsonify({
+            "content": result.text
+        }), 200
+
+    except Exception as e:
+        print("Humanize error:", e)
+
+        if ai_model_key == "pro":
+            fallback_model = genai.GenerativeModel(
+                "models/gemini-2.5-flash"
+            )
+            result = fallback_model.generate_content(prompt)
+            return jsonify({
+                "content": result.text
+            }), 200
+
+        return jsonify({"error": "Humanization failed"}), 500
+
