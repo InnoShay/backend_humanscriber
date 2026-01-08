@@ -2,10 +2,7 @@ from flask import Flask, request, jsonify
 import google.generativeai as genai
 import os
 import requests
-from docx import Document
-from docx.shared import Pt, Inches
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-import uuid, os, tempfile
+
 
 app = Flask(__name__)
 
@@ -208,98 +205,3 @@ def humanize():
             }), 200
 
         return jsonify({"error": "Humanization failed"}), 500
-
-@app.route("/prepare_docx", methods=["POST"])
-def prepare_docx():
-    data = request.get_json(silent=True)
-
-    text = data.get("text", "")
-
-    margins = data.get("margins", {})
-    top = margins.get("top", 1)
-    bottom = margins.get("bottom", 1)
-    left = margins.get("left", 1)
-    right = margins.get("right", 1)
-
-    header = data.get("header", {})
-    header_content = header.get("content", "")
-    header_align = header.get("alignment", "center")
-
-    footer1 = data.get("footer1", {})
-    footer1_content = footer1.get("content", "")
-    footer1_align = footer1.get("alignment", "left")
-
-    footer2 = data.get("footer2", {})
-    footer2_page = footer2.get("page_num", False)
-    footer2_align = footer2.get("alignment", "right")
-    footer2_format = int(footer2.get("format", 1))
-
-    if footer2_page and footer2_align == footer1_align:
-        footer1_align = "left" if footer2_align == "right" else "right"
-
-    cover = data.get("cover_page", {})
-    cover_title = cover.get("title", "")
-    submitted_to = cover.get("submitted_to", "")
-    submitted_by = cover.get("submitted_by", "")
-
-    doc = Document()
-
-    section = doc.sections[0]
-    section.top_margin = Inches(top)
-    section.bottom_margin = Inches(bottom)
-    section.left_margin = Inches(left)
-    section.right_margin = Inches(right)
-
-    if cover_title:
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run(cover_title)
-        run.bold = True
-        run.font.size = Pt(28)
-
-        if submitted_to:
-            p2 = doc.add_paragraph(f"Submitted To: {submitted_to}")
-            p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p2.runs[0].font.size = Pt(14)
-
-        if submitted_by:
-            p3 = doc.add_paragraph(f"Submitted By: {submitted_by}")
-            p3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p3.runs[0].font.size = Pt(14)
-
-        doc.add_page_break()
-
-    for sec in doc.sections:
-        hdr = sec.header.paragraphs[0]
-        hdr.text = header_content
-        hdr.alignment = (
-            WD_ALIGN_PARAGRAPH.LEFT if header_align == "left"
-            else WD_ALIGN_PARAGRAPH.RIGHT if header_align == "right"
-            else WD_ALIGN_PARAGRAPH.CENTER
-        )
-
-    for sec in doc.sections:
-        ftr = sec.footer.paragraphs[0]
-        ftr.alignment = WD_ALIGN_PARAGRAPH.LEFT if footer1_align == "left" else WD_ALIGN_PARAGRAPH.RIGHT
-        ftr.text = footer1_content
-
-        if footer2_page:
-            ftr2 = sec.footer.add_paragraph()
-            f_align = WD_ALIGN_PARAGRAPH.LEFT if footer2_align == "left" else WD_ALIGN_PARAGRAPH.RIGHT
-            ftr2.alignment = f_align
-            run = ftr2.add_run()
-            run._r.add_field('PAGE')
-
-    for line in text.split("\n"):
-        para = doc.add_paragraph(line)
-        para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-
-    file_id = str(uuid.uuid4())
-    temp_path = os.path.join(tempfile.gettempdir(), f"{file_id}.docx")
-    doc.save(temp_path)
-
-    return jsonify({
-        "status": "ready",
-        "file_id": file_id,
-        "message": "Document prepared successfully"
-    }), 200
