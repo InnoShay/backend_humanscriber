@@ -13,6 +13,14 @@ MODEL_REGISTRY = {
     "pro": "models/gemini-3-flash-preview"
 }
 
+def get_balanced_sapling_score(text):
+    key = next(sapling_cycle)
+    payload = {"key": key, "text": text}
+    r = requests.post("https://api.sapling.ai/api/v1/aidetect", json=payload, timeout=12)
+    r.raise_for_status()
+    return r.json()
+
+
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.get_json(silent=True)
@@ -60,42 +68,26 @@ def generate():
 def health():
     return jsonify({"status": "ok"}), 200
 
+
 @app.route("/score", methods=["POST"])
 def score():
     data = request.get_json(silent=True)
-
     if not data or "text" not in data:
         return jsonify({"error": "Missing 'text'"}), 400
 
     text = data["text"]
 
     try:
-        response = requests.post(
-            "https://api.sapling.ai/api/v1/aidetect",
-            json={
-                "key": os.getenv("SAPLING_API_KEY"),
-                "text": text
-            },
-            timeout=50
-        )
-
-        response.raise_for_status()
-        result = response.json()
-
+        result = get_balanced_sapling_score(text)
         raw_score = result.get("score")
-
         if raw_score is None:
-            return jsonify({"error": "Invalid response from Sapling"}), 502
-
+            return jsonify({"error": "Invalid Sapling response"}), 502
         ai_score = int(raw_score * 100)
+        return jsonify({"score": ai_score}), 200
 
-        return jsonify({
-            "score": ai_score
-        }), 200
-
-    except requests.exceptions.RequestException as e:
-        print("Sapling API error:", e)
+    except Exception as e:
         return jsonify({"error": "Scoring failed", "message": str(e)}), 500
+    
 
 def build_editor_prompt(content, audience, tone, purpose, length_change):
     return f"""
