@@ -2,24 +2,21 @@ from flask import Flask, request, jsonify
 import google.generativeai as genai
 import os
 import requests
+import itertools
+
 
 
 app = Flask(__name__)
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
+sapling_keys = os.getenv("SAPLING_KEYS", "").split(",")
+sapling_cycle = itertools.cycle(sapling_keys)
+
 MODEL_REGISTRY = {
     "flash": "models/gemini-2.5-flash",
     "pro": "models/gemini-3-flash-preview"
 }
-
-def get_balanced_sapling_score(text):
-    key = next(sapling_cycle)
-    payload = {"key": key, "text": text}
-    r = requests.post("https://api.sapling.ai/api/v1/aidetect", json=payload, timeout=12)
-    r.raise_for_status()
-    return r.json()
-
 
 @app.route("/generate", methods=["POST"])
 def generate():
@@ -72,21 +69,44 @@ def health():
 @app.route("/score", methods=["POST"])
 def score():
     data = request.get_json(silent=True)
+
     if not data or "text" not in data:
         return jsonify({"error": "Missing 'text'"}), 400
 
     text = data["text"]
 
-    try:
-        result = get_balanced_sapling_score(text)
-        raw_score = result.get("score")
-        if raw_score is None:
-            return jsonify({"error": "Invalid Sapling response"}), 502
-        ai_score = int(raw_score * 100)
-        return jsonify({"score": ai_score}), 200
+    tried_keys = set()
 
-    except Exception as e:
-        return jsonify({"error": "Scoring failed", "message": str(e)}), 500
+    for _ in range(len(sapling_keys)):
+        key = next(sapling_cycle)
+
+        if key in tried_keys:
+            continue
+        tried_keys.add(key)
+
+        try:
+            response = requests.post(
+                "https://api.sapling.ai/api/v1/aidetect",
+                json={"key": key, "text": text},
+                timeout=5
+            )
+            response.raise_for_status()
+
+            result = response.json()
+            raw_score = result.get("score")
+
+            if raw_score is None:
+                continue
+
+            ai_score = int(raw_score * 100)
+
+            return jsonify({"score": ai_score}), 200
+
+        except requests.exceptions.RequestException:
+            continue
+
+    return jsonify({"error": "All Sapling keys failed"}), 500
+
     
 
 def build_editor_prompt(content, audience, tone, purpose, length_change):
